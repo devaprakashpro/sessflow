@@ -22,12 +22,14 @@ function endpoint(path: string, base: string): string {
 
 async function meshFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const { sync } = await getSettings();
-  if (!sync.meshUrl || !sync.meshToken) throw new Error('Mesh server not configured.');
-  const res = await fetch(endpoint(path, sync.meshUrl), {
+  const base = sync.meshUrl?.trim();
+  const token = sync.meshToken?.trim();
+  if (!base || !token) throw new Error('Mesh server not configured.');
+  const res = await fetch(endpoint(path, base), {
     ...init,
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${sync.meshToken}`,
+      authorization: `Bearer ${token}`,
       ...(init.headers ?? {}),
     },
   });
@@ -37,9 +39,10 @@ async function meshFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function meshHealth(): Promise<{ ok: boolean; ai?: boolean }> {
   const { sync } = await getSettings();
-  if (!sync.meshUrl) return { ok: false };
+  const base = sync.meshUrl?.trim();
+  if (!base) return { ok: false };
   try {
-    const res = await fetch(endpoint('/health', sync.meshUrl));
+    const res = await fetch(endpoint('/health', base));
     return res.ok ? await res.json() : { ok: false };
   } catch {
     return { ok: false };

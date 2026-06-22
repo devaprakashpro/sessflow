@@ -280,8 +280,10 @@ let liveRetry: ReturnType<typeof setTimeout> | null = null;
 
 async function connectLive() {
   const { sync } = await getSettings();
-  const want = sync.provider === 'mesh' && sync.autoSync && !!sync.meshUrl && !!sync.meshToken;
-  const key = want ? `${sync.meshUrl}|${sync.meshToken}` : '';
+  const meshUrl = sync.meshUrl?.trim();
+  const meshToken = sync.meshToken?.trim();
+  const want = sync.provider === 'mesh' && sync.autoSync && !!meshUrl && !!meshToken;
+  const key = want ? `${meshUrl}|${meshToken}` : '';
   if (key === liveKey && liveSocket && liveSocket.readyState <= 1) return; // already connected
   liveKey = key;
   liveSocket?.close();
@@ -289,8 +291,8 @@ async function connectLive() {
   if (!want) return;
 
   const wsUrl =
-    sync.meshUrl!.replace(/^http/, 'ws').replace(/\/+$/, '') +
-    `/v1/live?token=${encodeURIComponent(sync.meshToken!)}`;
+    meshUrl!.replace(/^http/, 'ws').replace(/\/+$/, '') +
+    `/v1/live?token=${encodeURIComponent(meshToken!)}`;
   try {
     const ws = new WebSocket(wsUrl);
     liveSocket = ws;

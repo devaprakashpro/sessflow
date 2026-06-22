@@ -32,8 +32,8 @@ app.get('/health', (c) => c.json({ ok: true, name: 'sessflow-mesh', version: '0.
 // bearer-token auth for everything under /v1
 app.use('/v1/*', async (c, next) => {
   const auth = c.req.header('authorization') ?? '';
-  const tok = auth.replace(/^Bearer\s+/i, '');
-  if (tok !== TOKEN) return c.json({ error: 'unauthorized' }, 401);
+  const tok = auth.replace(/^Bearer\s+/i, '').trim();
+  if (tok !== TOKEN.trim()) return c.json({ error: 'unauthorized' }, 401);
   await next();
 });
 

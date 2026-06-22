@@ -50,7 +50,8 @@ WantedBy=default.target
 UNIT
 
 systemctl --user daemon-reload
-systemctl --user enable --now sessflow-mesh
+systemctl --user enable sessflow-mesh
+systemctl --user restart sessflow-mesh   # restart to pick up new code
 sleep 1
 systemctl --user --no-pager status sessflow-mesh | head -5
 echo "--- token (paste into the extension) ---"
