@@ -90,6 +90,7 @@ export function SessionCard({ session, onToast }: { session: Session; onToast: (
               ))}
             </select>
             {scheduled ? <span className="chip text-emerald-400">⏰ scheduled</span> : null}
+            {session.live ? <span className="chip text-emerald-400">● live</span> : null}
           </div>
           {session.summary && <p className="mt-2 text-sm text-vault-muted italic">{session.summary}</p>}
         </div>

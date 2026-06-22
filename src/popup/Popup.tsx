@@ -4,7 +4,7 @@ import browser from '../lib/browser';
 import { db } from '../lib/db';
 import { send, openDashboard } from '../lib/messaging';
 import { tabCount } from '../lib/sessions';
-import type { Session } from '../lib/types';
+import type { LiveStatus, Session } from '../lib/types';
 
 export function Popup() {
   const [openTabs, setOpenTabs] = useState(0);
@@ -12,6 +12,8 @@ export function Popup() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [winId, setWinId] = useState<number | undefined>();
+  const [live, setLive] = useState<LiveStatus>({ sessionId: null, name: null });
 
   const recent = useLiveQuery(
     async () =>
@@ -26,8 +28,36 @@ export function Popup() {
       const normal = wins.filter((w) => w.type === 'normal');
       setOpenWindows(normal.length);
       setOpenTabs(normal.reduce((n, w) => n + (w.tabs?.length ?? 0), 0));
+      const cur = await browser.windows.getCurrent();
+      setWinId(cur.id);
+      try {
+        setLive(await send<LiveStatus>({ type: 'GET_LIVE_STATUS', windowId: cur.id }));
+      } catch {
+        /* ignore */
+      }
     })();
   }, []);
+
+  async function startLive() {
+    setBusy('live');
+    try {
+      const s = await send<Session>({ type: 'START_LIVE_WINDOW', name, windowId: winId });
+      setName('');
+      setLive({ sessionId: s.id, name: s.name });
+      toast('● Live — this window now auto-syncs');
+    } catch (e: any) {
+      toast(e.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function stopLive() {
+    if (!live.sessionId) return;
+    await send({ type: 'STOP_LIVE', sessionId: live.sessionId });
+    setLive({ sessionId: null, name: null });
+    toast('Live sync stopped (session kept)');
+  }
 
   const toast = (m: string) => {
     setFlash(m);
@@ -79,6 +109,25 @@ export function Popup() {
           {busy === 'all' ? 'Saving…' : 'Save all'}
         </button>
       </div>
+
+      {live.sessionId ? (
+        <div className="flex items-center justify-between rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2">
+          <span className="flex items-center gap-2 text-sm min-w-0">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="truncate">Live: <b>{live.name}</b></span>
+          </span>
+          <button className="btn-ghost text-xs shrink-0" onClick={stopLive}>Stop</button>
+        </div>
+      ) : (
+        <button
+          className="btn-ghost w-full justify-center border border-vault-border text-emerald-300 hover:bg-emerald-500/10"
+          disabled={busy !== null}
+          onClick={startLive}
+          title="Keep this window continuously saved & synced on every tab change"
+        >
+          {busy === 'live' ? 'Starting…' : '● Live-sync this window'}
+        </button>
+      )}
 
       <div className="grid grid-cols-3 gap-2 text-xs">
         <QuickAction label="Search" onClick={() => openDashboard('#palette')} />

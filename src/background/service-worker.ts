@@ -9,6 +9,7 @@ import {
   restore,
   saveAllWindows,
   saveCurrentWindow,
+  updateSession,
 } from '../lib/sessions';
 import { applyAiGroups, groupSessionWithAi } from '../lib/ai';
 import { syncNow } from '../lib/sync';
@@ -188,18 +189,39 @@ browser.tabs.onActivated.addListener(({ tabId }) => {
 });
 browser.tabs.onUpdated.addListener((tabId, info, tab) => {
   if (info.status === 'complete' || info.audible !== undefined) touch(tabId);
-  if (info.status === 'complete') refreshWindowCache(tab.windowId);
+  if (info.status === 'complete') {
+    refreshWindowCache(tab.windowId);
+    onTabActivity(tab.windowId);
+  }
 });
-browser.tabs.onCreated.addListener((tab) => refreshWindowCache(tab.windowId));
+browser.tabs.onCreated.addListener((tab) => {
+  refreshWindowCache(tab.windowId);
+  onTabActivity(tab.windowId);
+});
 browser.tabs.onRemoved.addListener((tabId, info) => {
   lastActive.delete(tabId);
-  if (!info.isWindowClosing) refreshWindowCache(info.windowId);
+  if (!info.isWindowClosing) {
+    refreshWindowCache(info.windowId);
+    onTabActivity(info.windowId);
+  }
 });
+browser.tabs.onMoved.addListener((_id, info) => onTabActivity(info.windowId));
+browser.tabs.onAttached.addListener((_id, info) => onTabActivity(info.newWindowId));
 
-// auto-save a window's tabs the moment it closes
+// when a window closes: clear its live binding and freeze the session as a
+// normal saved snapshot; optionally auto-save windows that weren't tracked.
 browser.windows.onRemoved.addListener(async (windowId) => {
   const cached = windowCache.get(windowId);
   windowCache.delete(windowId);
+
+  const bindings = await getBindings();
+  const liveSessionId = bindings[String(windowId)];
+  if (liveSessionId) {
+    await removeBinding(windowId);
+    await updateSession(liveSessionId, { live: false }); // freeze final state
+    return; // a live session was already being saved continuously
+  }
+
   const s = await getSettings();
   if (!s.autoSaveOnClose || !cached || cached.tabs.length === 0) return;
   await createSession([cached], {
@@ -208,6 +230,77 @@ browser.windows.onRemoved.addListener(async (windowId) => {
     tags: ['closed'],
   });
 });
+
+// ---------------------------------------------------------------- live sessions
+// A "live" session is bound to an open window and re-captured on every tab
+// change, then pushed to the mesh/cloud. Bindings live in storage.session so
+// they survive the ephemeral MV3 worker but reset on browser restart (when
+// window ids are invalid anyway).
+const LIVE_KEY = 'liveBindings';
+
+async function getBindings(): Promise<Record<string, string>> {
+  try {
+    const got = (await browser.storage.session.get(LIVE_KEY)) as { [LIVE_KEY]?: Record<string, string> };
+    return got[LIVE_KEY] ?? {};
+  } catch {
+    return {};
+  }
+}
+async function setBinding(windowId: number, sessionId: string) {
+  const b = await getBindings();
+  b[windowId] = sessionId;
+  await browser.storage.session.set({ [LIVE_KEY]: b });
+}
+async function removeBinding(windowId: number) {
+  const b = await getBindings();
+  delete b[windowId];
+  await browser.storage.session.set({ [LIVE_KEY]: b });
+}
+
+// debounce live re-capture so multi-tab operations collapse into one update
+const liveTimers = new Map<number, ReturnType<typeof setTimeout>>();
+function scheduleLiveUpdate(windowId: number) {
+  const t = liveTimers.get(windowId);
+  if (t) clearTimeout(t);
+  liveTimers.set(
+    windowId,
+    setTimeout(() => {
+      liveTimers.delete(windowId);
+      void updateLiveWindow(windowId);
+    }, 800),
+  );
+}
+async function updateLiveWindow(windowId: number) {
+  const b = await getBindings();
+  const sessionId = b[windowId];
+  if (!sessionId) return;
+  const session = await db.sessions.get(sessionId);
+  if (!session || !session.live) {
+    await removeBinding(windowId);
+    return;
+  }
+  const w = await captureWindow(windowId).catch(() => null);
+  if (!w) return;
+  await updateSession(sessionId, { windows: [w] }); // bumps rev/updatedAt + marks dirty
+  debouncedSync();
+}
+
+// react to ANY tab change in a tracked window
+async function onTabActivity(windowId?: number) {
+  if (windowId == null) return;
+  const b = await getBindings();
+  if (b[windowId]) scheduleLiveUpdate(windowId);
+}
+
+// coalesce mesh/cloud pushes triggered by live updates
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSync() {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    syncNow().catch(() => {});
+  }, 1500);
+}
 
 // ---------------------------------------------------------------- message router
 browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -243,6 +336,36 @@ async function handle(msg: Msg): Promise<unknown> {
       return suspendTab(msg.tabId);
     case 'FIND_DUPLICATES':
       return findDuplicates();
+    case 'START_LIVE_WINDOW': {
+      const windowId = msg.windowId ?? (await browser.windows.getCurrent()).id;
+      if (windowId == null) throw new Error('No current window.');
+      const w = await captureWindow(windowId);
+      if (!w) throw new Error('No saveable tabs in this window.');
+      const session = await createSession([w], { name: msg.name, kind: 'manual', tags: ['live'] });
+      await db.sessions.update(session.id, { live: true });
+      await setBinding(windowId, session.id);
+      debouncedSync();
+      return { ...session, live: true };
+    }
+    case 'STOP_LIVE': {
+      await updateSession(msg.sessionId, { live: false });
+      const b = await getBindings();
+      for (const [wid, sid] of Object.entries(b)) if (sid === msg.sessionId) await removeBinding(Number(wid));
+      return { stopped: true };
+    }
+    case 'GET_LIVE_STATUS': {
+      const windowId = msg.windowId ?? (await browser.windows.getCurrent()).id;
+      if (windowId == null) return { sessionId: null, name: null };
+      const b = await getBindings();
+      const sid = b[String(windowId)];
+      if (!sid) return { sessionId: null, name: null };
+      const s = await db.sessions.get(sid);
+      if (!s || !s.live || s.deletedAt) {
+        await removeBinding(windowId);
+        return { sessionId: null, name: null };
+      }
+      return { sessionId: sid, name: s.name };
+    }
     default:
       throw new Error(`Unknown message: ${(msg as any).type}`);
   }

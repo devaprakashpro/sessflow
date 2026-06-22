@@ -38,6 +38,8 @@ export interface Session {
   workspaceId?: string;
   /** Pinned to the top of its list. */
   favorite?: boolean;
+  /** Live session: bound to an open window and auto-updated on every tab change. */
+  live?: boolean;
   /** Sync bookkeeping. */
   remoteId?: string;
   /** monotonically increasing local revision for conflict resolution. */
@@ -142,7 +144,17 @@ export type Msg =
   | { type: 'AI_GROUP_SESSION'; sessionId: string }
   | { type: 'SYNC_NOW' }
   | { type: 'SUSPEND_TAB'; tabId: number }
-  | { type: 'FIND_DUPLICATES' };
+  | { type: 'FIND_DUPLICATES' }
+  // live sessions — bind the current window to a session that auto-updates
+  | { type: 'START_LIVE_WINDOW'; name?: string; windowId?: number }
+  | { type: 'STOP_LIVE'; sessionId: string }
+  | { type: 'GET_LIVE_STATUS'; windowId?: number };
+
+export interface LiveStatus {
+  /** sessionId bound to the caller's current window, or null. */
+  sessionId: string | null;
+  name: string | null;
+}
 
 export interface CurrentTab {
   id?: number;
