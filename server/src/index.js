@@ -10,6 +10,7 @@ import { dirname, resolve } from 'node:path';
 import { openDb, makeQueries, hashUrl } from './db.js';
 import { startArchiveWorker, enqueueSessionUrls } from './archive.js';
 import { askYourTabs, toFtsQuery } from './ai.js';
+import { WEB_PAGE } from './web.js';
 
 // ----------------------------------------------------------------- config
 const PORT = Number(process.env.SESSFLOW_PORT ?? 7777);
@@ -29,6 +30,9 @@ app.use('*', cors({ origin: '*', allowHeaders: ['authorization', 'content-type']
 
 app.get('/health', (c) => c.json({ ok: true, name: 'sessflow-mesh', version: '0.1.0', ai: !!AI_KEY }));
 
+// web companion (mobile/desktop) — open in any browser on the tailnet
+app.get('/', (c) => c.html(WEB_PAGE));
+
 // bearer-token auth for everything under /v1
 app.use('/v1/*', async (c, next) => {
   const auth = c.req.header('authorization') ?? '';
@@ -38,6 +42,13 @@ app.use('/v1/*', async (c, next) => {
 });
 
 app.get('/v1/stats', (c) => c.json(q.stats.get()));
+
+// list sessions for the web companion
+app.get('/v1/sessions', (c) => {
+  const limit = Math.min(Number(c.req.query('limit') ?? 200), 500);
+  const sessions = q.listSessions.all(limit).map((r) => JSON.parse(r.payload));
+  return c.json({ sessions });
+});
 
 // ---- sync: pull changes since `since`, push incoming sessions (LWW) ----
 app.post('/v1/sync', async (c) => {

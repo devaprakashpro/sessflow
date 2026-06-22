@@ -92,6 +92,11 @@ export function makeQueries(db) {
     `),
     getBody: db.prepare(`SELECT url, title, body FROM pages_fts WHERE url_hash = ?`),
 
+    // ---- web companion ----
+    listSessions: db.prepare(`
+      SELECT payload FROM sessions WHERE deleted=0 ORDER BY updated_at DESC LIMIT ?
+    `),
+
     stats: db.prepare(`
       SELECT
         (SELECT COUNT(*) FROM sessions WHERE deleted=0) AS sessions,
