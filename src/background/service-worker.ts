@@ -7,6 +7,7 @@ import {
   createSession,
   findDuplicates,
   restore,
+  restoreToWindow,
   saveAllWindows,
   saveCurrentWindow,
   updateSession,
@@ -352,6 +353,26 @@ async function handle(msg: Msg): Promise<unknown> {
       const b = await getBindings();
       for (const [wid, sid] of Object.entries(b)) if (sid === msg.sessionId) await removeBinding(Number(wid));
       return { stopped: true };
+    }
+    case 'RESUME_LIVE_SESSION': {
+      // reopen the SAME session's tabs in a new window and keep it live
+      const windowId = await restoreToWindow(msg.sessionId);
+      if (windowId == null) throw new Error('Session has no tabs to open.');
+      await updateSession(msg.sessionId, { live: true });
+      await setBinding(windowId, msg.sessionId);
+      debouncedSync();
+      return { windowId };
+    }
+    case 'ATTACH_LIVE': {
+      // bind the current window to an existing session as-is, then go live
+      const windowId = msg.windowId ?? (await browser.windows.getCurrent()).id;
+      if (windowId == null) throw new Error('No current window.');
+      const w = await captureWindow(windowId);
+      if (!w) throw new Error('No saveable tabs in this window.');
+      await updateSession(msg.sessionId, { windows: [w], live: true });
+      await setBinding(windowId, msg.sessionId);
+      debouncedSync();
+      return { windowId };
     }
     case 'GET_LIVE_STATUS': {
       const windowId = msg.windowId ?? (await browser.windows.getCurrent()).id;

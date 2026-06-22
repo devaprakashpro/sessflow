@@ -148,7 +148,11 @@ export type Msg =
   // live sessions — bind the current window to a session that auto-updates
   | { type: 'START_LIVE_WINDOW'; name?: string; windowId?: number }
   | { type: 'STOP_LIVE'; sessionId: string }
-  | { type: 'GET_LIVE_STATUS'; windowId?: number };
+  | { type: 'GET_LIVE_STATUS'; windowId?: number }
+  // reopen a session's tabs in a new window and keep that SAME session live
+  | { type: 'RESUME_LIVE_SESSION'; sessionId: string }
+  // attach the current window to an existing session and go live (no reopen)
+  | { type: 'ATTACH_LIVE'; sessionId: string; windowId?: number };
 
 export interface LiveStatus {
   /** sessionId bound to the caller's current window, or null. */

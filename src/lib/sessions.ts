@@ -155,6 +155,16 @@ export async function restore(id: string, asNewWindow = true): Promise<void> {
   }
 }
 
+/** Open all of a session's tabs into ONE new window and return its id (for live re-binding). */
+export async function restoreToWindow(id: string): Promise<number | undefined> {
+  const s = await db.sessions.get(id);
+  if (!s) return undefined;
+  const urls = s.windows.flatMap((w) => w.tabs.map((t) => t.url));
+  if (urls.length === 0) return undefined;
+  const win = await browser.windows.create({ url: urls, incognito: false });
+  return win.id;
+}
+
 /** Find duplicate tabs across all open windows. Returns groups keyed by URL. */
 export async function findDuplicates(): Promise<{ url: string; tabIds: number[] }[]> {
   const tabs = await browser.tabs.query({});

@@ -99,6 +99,7 @@ export function SessionCard({ session, onToast }: { session: Session; onToast: (
       <div className="mt-3 flex flex-wrap gap-2">
         <button className="btn-primary" onClick={() => send({ type: 'RESTORE_SESSION', sessionId: session.id, newWindow: true })}>Restore ↗</button>
         <button className="btn-ghost border border-vault-border" onClick={() => send({ type: 'RESTORE_SESSION', sessionId: session.id, newWindow: false })}>Restore here</button>
+        <button className="btn-ghost border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10" title="Reopen this session in a new window and keep it auto-syncing" onClick={async () => { await send({ type: 'RESUME_LIVE_SESSION', sessionId: session.id }); onToast('● Reopened & live'); }}>▶ Restore &amp; Live</button>
         <button className="btn-ghost border border-vault-border" disabled={aiBusy} onClick={aiGroup}>{aiBusy ? 'Grouping…' : '✨ AI group'}</button>
         <button className="btn-ghost border border-vault-border" onClick={copyShare}>Share</button>
         <button className="btn-ghost border border-vault-border" onClick={() => setScheduling(true)}>⏰ Schedule</button>
