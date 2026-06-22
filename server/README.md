@@ -19,12 +19,21 @@ npm start
 
 On first start it prints a **device token** — paste that into the extension under **Settings → Cloud sync → Mesh**.
 
-### Point the extension at it (over Tailscale)
-Use your machine's MagicDNS name or tailnet IP:
+### Bind privately to your tailnet (recommended)
+Set `SESSFLOW_HOST=tailscale` and the server auto-detects this node's Tailscale IP and binds **only** to it — never your LAN or the public internet:
+```bash
+SESSFLOW_HOST=tailscale npm start
+#   Binding to Tailscale IP 100.x.y.z (private to your tailnet)
+#   Point the extension here: http://<node>.<tailnet>.ts.net:7777
 ```
-http://your-laptop.your-tailnet.ts.net:7777
+On startup it prints both the MagicDNS URL and the IP URL — paste either into **Settings → Cloud sync → Mesh** along with the device token. Because Tailscale encrypts and authenticates at the network layer, **no public IP, port-forwarding, or TLS cert is needed**. (`SESSFLOW_HOST` also accepts `0.0.0.0` for all interfaces, or a specific `100.x.y.z`.)
+
+### One-command remote deploy
+From your dev machine, push the server to any tailnet node over SSH — installs prod deps and runs it as a `systemd --user` service bound to Tailscale:
+```bash
+./deploy.sh dev@100.x.y.z          # e.g. your always-on node
 ```
-Because Tailscale encrypts and authenticates traffic at the network layer, no public IP, port-forwarding, or TLS cert is needed. For a strictly private server, set `SESSFLOW_HOST` to your Tailscale IP (e.g. `100.x.y.z`) so it never listens on your LAN.
+No secrets are copied; the token is generated on the remote and printed at the end.
 
 ### Run as a service (systemd)
 ```ini

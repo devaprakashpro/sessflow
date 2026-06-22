@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 import { randomBytes } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { openDb, makeQueries, hashUrl } from './db.js';
@@ -12,7 +13,7 @@ import { askYourTabs, toFtsQuery } from './ai.js';
 
 // ----------------------------------------------------------------- config
 const PORT = Number(process.env.SESSFLOW_PORT ?? 7777);
-const HOST = process.env.SESSFLOW_HOST ?? '0.0.0.0';
+const HOST = resolveHost(); // 'tailscale' → auto-bind to this node's tailnet IP
 const DB_PATH = resolve(process.env.SESSFLOW_DB ?? './data/sessflow.db');
 const AI_KEY = process.env.ANTHROPIC_API_KEY ?? '';
 const AI_MODEL = process.env.SESSFLOW_AI_MODEL ?? 'claude-opus-4-8';
@@ -113,9 +114,11 @@ const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) =>
   console.log(`\n  Sessflow Mesh running → http://${HOST}:${info.port}`);
   console.log(`  DB: ${DB_PATH}`);
   console.log(`  AI ask-your-tabs: ${AI_KEY ? 'enabled' : 'disabled (set ANTHROPIC_API_KEY)'}`);
-  console.log(`\n  Point the extension at this URL over your tailnet, e.g.`);
-  console.log(`    http://<your-machine>.<tailnet>.ts.net:${info.port}`);
-  console.log(`\n  Device token (paste into Sessflow → Settings → Mesh):`);
+  const tnet = tailnetUrl(info.port);
+  console.log(`\n  Point the extension here (Settings → Cloud sync → Mesh):`);
+  if (tnet) console.log(`    ${tnet}`);
+  console.log(`    http://${displayHost()}:${info.port}`);
+  console.log(`\n  Device token:`);
   console.log(`    ${TOKEN}\n`);
 });
 
@@ -134,6 +137,52 @@ function broadcast(msg) {
 }
 
 // ----------------------------------------------------------------- helpers
+/** Resolve the bind host. `SESSFLOW_HOST=tailscale` auto-detects this node's tailnet IP. */
+function resolveHost() {
+  const h = process.env.SESSFLOW_HOST ?? '0.0.0.0';
+  if (h === 'tailscale' || h === 'ts') {
+    const ip = tailscaleIp();
+    if (ip) {
+      console.log(`  Binding to Tailscale IP ${ip} (private to your tailnet)`);
+      return ip;
+    }
+    console.warn('  ⚠ Could not detect a Tailscale IP — falling back to 0.0.0.0');
+    return '0.0.0.0';
+  }
+  return h;
+}
+
+/** This node's IPv4 tailnet address, or '' if Tailscale isn't available. */
+function tailscaleIp() {
+  try {
+    return execSync('tailscale ip -4', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\n')[0]
+      .trim();
+  } catch {
+    return '';
+  }
+}
+
+/** A MagicDNS URL for this node if resolvable, else an IP URL — for the startup hint. */
+function tailnetUrl(port) {
+  try {
+    const json = JSON.parse(
+      execSync('tailscale status --json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }),
+    );
+    const dns = (json?.Self?.DNSName ?? '').replace(/\.$/, '');
+    if (dns) return `http://${dns}:${port}`;
+  } catch {
+    /* ignore */
+  }
+  const ip = tailscaleIp();
+  return ip ? `http://${ip}:${port}` : '';
+}
+
+/** Friendlier display when bound to 0.0.0.0. */
+function displayHost() {
+  return HOST === '0.0.0.0' ? (tailscaleIp() || 'localhost') : HOST;
+}
+
 function resolveToken() {
   if (process.env.SESSFLOW_TOKEN) return process.env.SESSFLOW_TOKEN;
   const file = resolve(dirname(DB_PATH), '.sessflow-token');
