@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="Sessflow">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1115"/>
+      <stop offset="1" stop-color="#171a21"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="6" fill="url(#accent)"/>
+  <g transform="translate(80,96)">
+    <rect width="64" height="64" rx="16" fill="url(#accent)"/>
+    <rect x="14" y="18" width="36" height="6" rx="3" fill="#0f1115" opacity="0.85"/>
+    <rect x="14" y="30" width="28" height="6" rx="3" fill="#0f1115" opacity="0.7"/>
+    <rect x="14" y="42" width="22" height="6" rx="3" fill="#0f1115" opacity="0.55"/>
+  </g>
+  <text x="168" y="138" font-family="Inter, Segoe UI, system-ui, sans-serif" font-size="58" font-weight="700" fill="#e6e9ef">Sessflow</text>
+  <text x="170" y="182" font-family="Inter, Segoe UI, system-ui, sans-serif" font-size="24" font-weight="500" fill="#8b93a7">Your tabs. Your server. Cross-browser session manager with private Tailscale-mesh sync.</text>
+  <g font-family="Inter, Segoe UI, system-ui, sans-serif" font-size="16" font-weight="600" fill="#22d3ee" transform="translate(170,224)">
+    <text x="0" y="0">⚡ AI grouping</text>
+    <text x="170" y="0">🔮 Ask your tabs</text>
+    <text x="360" y="0">📁 Workspaces</text>
+    <text x="530" y="0">⏰ Scheduling</text>
+    <text x="700" y="0">💤 Tab suspend</text>
+  </g>
+</svg>

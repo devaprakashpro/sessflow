@@ -66,7 +66,7 @@ export function manifest(target: 'chrome' | 'firefox'): ManifestV3Export {
       ...base,
       background: { scripts: ['src/background/service-worker.ts'], type: 'module' } as any,
       browser_specific_settings: {
-        gecko: { id: 'sessflow@devaprakash.in', strict_min_version: '121.0' },
+        gecko: { id: '{c0ffee00-5e55-4f10-9abc-5e5510000001}', strict_min_version: '121.0' },
       } as any,
     };
   }

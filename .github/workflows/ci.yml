@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+jobs:
+  extension:
+    name: Typecheck & build extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build Chrome/Edge
+        run: npm run build
+      - name: Build Firefox
+        run: npm run build:firefox
+      - name: Upload builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: sessflow-extension
+          path: |
+            dist
+            dist-firefox
+          retention-days: 7
+
+  server:
+    name: Lint Mesh server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Syntax-check sources
+        run: node --check src/index.js && node --check src/db.js && node --check src/archive.js && node --check src/ai.js

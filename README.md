@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="Sessflow" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/devaprakashpro/sessflow/actions/workflows/ci.yml"><img src="https://github.com/devaprakashpro/sessflow/actions/workflows/ci.yml/badge.svg?branch=development" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/manifest-v3-6366f1" alt="Manifest V3" />
+  <img src="https://img.shields.io/badge/browsers-Chrome%20%7C%20Edge%20%7C%20Firefox-22d3ee" alt="Browsers" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT" />
+  <img src="https://img.shields.io/badge/sync-self--hosted%20(Tailscale)-0f1115" alt="Self-hosted sync" />
+</p>
+
 # Sessflow 🗄️
 
 A modern, cross-browser **session & tab manager** — everything Session Buddy does, plus **private sync to your own Tailscale node**, AI auto-grouping, ask-your-tabs search over an automatic page archive, workspaces, scheduled sessions, a command palette and a memory-saving tab suspender. Manifest V3, local-first.
