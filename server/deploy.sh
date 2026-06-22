@@ -27,6 +27,11 @@ cd ~/sessflow-mesh
 command -v node >/dev/null || { echo "node not installed on host"; exit 1; }
 npm ci --omit=dev || npm install --omit=dev
 
+# make `systemctl --user` work over a non-interactive SSH session
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+loginctl enable-linger "$USER" >/dev/null 2>&1 || true   # keep running after logout
+
 mkdir -p ~/.config/systemd/user
 cat > ~/.config/systemd/user/sessflow-mesh.service <<UNIT
 [Unit]
@@ -46,7 +51,6 @@ UNIT
 
 systemctl --user daemon-reload
 systemctl --user enable --now sessflow-mesh
-loginctl enable-linger "$USER" >/dev/null 2>&1 || true   # keep running after logout
 sleep 1
 systemctl --user --no-pager status sessflow-mesh | head -5
 echo "--- token (paste into the extension) ---"
