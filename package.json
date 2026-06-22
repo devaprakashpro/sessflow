@@ -1,0 +1,41 @@
+{
+  "name": "sessflow",
+  "version": "0.1.0",
+  "description": "Sessflow — a Session Buddy-style tab & session manager with AI grouping, cloud sync, full-text search, command palette, and tab suspension. Cross-browser MV3.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:firefox": "TARGET=firefox tsc --noEmit && TARGET=firefox vite build",
+    "preview": "vite preview",
+    "zip": "npm run build && cd dist && zip -r ../sessflow-chrome.zip . && cd ..",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "cmdk": "^1.0.0",
+    "dexie": "^4.0.8",
+    "dexie-react-hooks": "^1.1.7",
+    "fuse.js": "^7.0.0",
+    "nanoid": "^5.0.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "webextension-polyfill": "^0.12.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.26",
+    "@types/chrome": "^0.0.270",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@types/webextension-polyfill": "^0.12.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vite": "~5.3.6"
+  }
+}

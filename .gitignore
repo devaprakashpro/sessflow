@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+dist-firefox/
+*.zip
+
+# vite / tooling
+.vite/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# server runtime data (SQLite DB + device token)
+data/
+*.db
+*.db-shm
+*.db-wal
+.sessflow-token
+
+# logs & os
+*.log
+.DS_Store
+Thumbs.db
